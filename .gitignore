@@ -1,0 +1,14 @@
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+client_secret_*.json
+google-credentials.json
+google_refresh_token.json
+
+# Dependencies and local output
+node_modules/
+logs/
+*.log
+.DS_Store
+

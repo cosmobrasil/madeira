@@ -501,6 +501,43 @@
         return rec;
     }
 
+    const DEVOLUTIVA_MODELO = {
+        INPUT: {
+            titulo: 'Entrada (Input) - Matéria-Prima e Competitividade',
+            analise: 'A diversificação de fontes de matéria-prima representa um diferencial competitivo crucial no mercado global. Empresas que integram materiais reciclados e resíduos de outros processos demonstram maior resiliência às flutuações de preços e à disponibilidade de recursos virgens.',
+            tecnica: 'Desenvolver parcerias estratégicas com empresas complementares para criar um ecossistema de economia circular, no qual os resíduos de uma empresa se tornam insumos para outra. Investir em tecnologias de purificação e processamento de materiais reciclados pode reduzir custos operacionais e criar vantagem competitiva sustentável.'
+        },
+        RESIDUOS: {
+            titulo: 'Gestão de Resíduos - Transformação em Valor Agregado',
+            analise: 'A gestão eficiente de resíduos transcende a simples conformidade ambiental, representando uma oportunidade significativa de geração de receita adicional e redução de custos. Empresas líderes no mercado global transformam seus resíduos em linhas de negócios independentes.',
+            tecnica: 'Implementar sistemas de classificação automatizada utilizando tecnologias de IoT e inteligência artificial para maximizar o valor de recuperação. Desenvolver parcerias com empresas de recuperação energética e reciclagem avançada pode gerar receitas complementares e reduzir o custo de tratamento.'
+        },
+        OUTPUT: {
+            titulo: 'Saída (Output) - Design Circular e Diferenciação de Mercado',
+            analise: 'O design para circularidade dos produtos finais representa um dos principais diferenciais competitivos no mercado B2B e B2C contemporâneo. Consumidores e empresas compradoras valorizam produtos que demonstram responsabilidade ambiental integral desde a concepção.',
+            tecnica: 'Incorporar princípios de design circular, como desmontagem facilitada, modularidade e escolha de materiais recicláveis. Desenvolver sistemas de logística reversa e comunicação transparente sobre o destino dos materiais pode fortalecer a marca e abrir novos mercados.'
+        },
+        VIDA: {
+            titulo: 'Vida Útil - Durabilidade, Reparabilidade e Reaproveitamento',
+            analise: 'A extensão da vida útil do produto reduz impactos ambientais, protege margens e fortalece o relacionamento com o cliente. Produtos duráveis, reparáveis e reaproveitáveis criam oportunidades de serviços, fidelização e novos modelos de negócio.',
+            tecnica: 'Aprimorar testes de durabilidade, projetar componentes reparáveis e disponibilizar peças, orientações e suporte técnico. Avaliar soluções modulares e formas de reaproveitamento após o uso pode ampliar o valor do produto ao longo de todo o seu ciclo de vida.'
+        },
+        MONITORAMENTO: {
+            titulo: 'Monitoramento - Extensão e Rastreabilidade do Ciclo de Vida',
+            analise: 'O monitoramento do ciclo de vida aproxima a empresa do cliente, amplia a transparência e permite transformar dados de uso em melhorias contínuas. Serviços pós-venda e rastreabilidade também criam novas oportunidades de relacionamento e receita.',
+            tecnica: 'Implementar serviços de manutenção e orientação de uso, além de soluções de rastreabilidade como QR Code, passaporte digital ou registros equivalentes. Tornar as informações do produto acessíveis e fáceis de entender fortalece a confiança e a diferenciação no mercado.'
+        }
+    };
+
+    function construirDevolutivas(recs, grupos) {
+        return ['INPUT', 'RESIDUOS', 'OUTPUT', 'VIDA', 'MONITORAMENTO'].map((chave) => ({
+            chave,
+            ...DEVOLUTIVA_MODELO[chave],
+            percentual: Number(grupos && grupos[chave] || 0),
+            recomendacoes: Array.isArray(recs && recs[chave]) ? recs[chave] : []
+        }));
+    }
+
     function formatarNomeGrupo(chave) {
         const nomes = {
             INPUT: 'INPUT',
@@ -552,6 +589,7 @@
 
     function construirHtmlEmailRelatorio({ empresa, percentual, perfilCircularidadeMateriais, estagio, grupos, recs, dataStr, idRelatorio, pontos, totalPossivel, potencial }) {
         const gruposOrdenados = obterGruposOrdenados(grupos);
+        const devolutivas = construirDevolutivas(recs, grupos);
         const graficoSvg = gerarSvgIndiceCircularidade(percentual, 320);
         const pcm = perfilCircularidadeMateriais || { indice: 0, componentes: {} };
         const lista = (arr) => Array.isArray(arr) ? arr.map(i => `<li>${i}</li>`).join('') : '';
@@ -616,17 +654,15 @@
               </div>
             </div>
             <div class="card">
-              <h2>Recomendações</h2>
-              <p><strong>Entrada - Origem e Tipo de Matéria-Prima</strong></p>
-              <ul>${lista(recs.INPUT)}</ul>
-              <p><strong>Resíduos - Gestão Interna de Resíduos</strong></p>
-              <ul>${lista(recs.RESIDUOS)}</ul>
-              <p><strong>Saídas - Fim de Vida do Produto</strong></p>
-              <ul>${lista(recs.OUTPUT)}</ul>
-              <p><strong>Vida Útil - Vida Útil do Produto</strong></p>
-              <ul>${lista(recs.VIDA)}</ul>
-              <p><strong>Monitoramento - Extensão e Rastreabilidade do Ciclo de Vida</strong></p>
-              <ul>${lista(recs.MONITORAMENTO)}</ul>
+              <h2>Recomendações Personalizadas</h2>
+              ${devolutivas.map((item) => `
+                <div class="devolutiva" style="break-inside:avoid;page-break-inside:avoid;margin-top:16px;padding-top:12px;border-top:1px solid #fed7aa;">
+                  <h3 style="font-size:16px;color:#c85a16;margin:0 0 8px;">${item.titulo} - ${item.percentual}%</h3>
+                  <p><strong>Análise Estratégica:</strong> ${item.analise}</p>
+                  <p><strong>Recomendação Técnica:</strong> ${item.tecnica}</p>
+                  <ul>${lista(item.recomendacoes)}</ul>
+                </div>
+              `).join('')}
             </div>
             <div class="card" style="border-color:#fbbf24;background:#fffbeb;">
               <h2 style="color:#92400e;">⚠️ Importante: Análise Qualitativa</h2>
@@ -687,6 +723,7 @@
         const idRelatorio = Math.floor(Math.random() * 1000) + 1;
         const estagio = classificarEstagio(percentual);
         const recs = gerarRecomendacoes(dados.respostas);
+        const devolutivas = construirDevolutivas(recs, grupos);
         const gruposOrdenados = obterGruposOrdenados(grupos);
         const graficoIndiceSvg = gerarSvgIndiceCircularidade(percentual, 360);
 
@@ -741,37 +778,20 @@
                 <div class="space-y-6">
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900">Recomendações Personalizadas</h3>
-                        <div class="mt-3 grid md:grid-cols-2 gap-4">
-                            <div class="print-avoid-break bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <h4 class="font-semibold text-blue-900 mb-2">Entrada - Origem e Tipo de Matéria-Prima</h4>
-                                <ul class="text-sm text-blue-800 space-y-1">
-                                    ${recs.INPUT.map(item => `<li>• ${item}</li>`).join('')}
-                                </ul>
-                            </div>
-                            <div class="print-avoid-break bg-orange-50 border border-orange-200 rounded-lg p-4">
-                                <h4 class="font-semibold text-orange-900 mb-2">Resíduos - Gestão Interna de Resíduos</h4>
-                                <ul class="text-sm text-orange-800 space-y-1">
-                                    ${recs.RESIDUOS.map(item => `<li>• ${item}</li>`).join('')}
-                                </ul>
-                            </div>
-                            <div class="print-avoid-break bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                                <h4 class="font-semibold text-indigo-900 mb-2">Saídas - Fim de Vida do Produto</h4>
-                                <ul class="text-sm text-indigo-800 space-y-1">
-                                    ${recs.OUTPUT.map(item => `<li>• ${item}</li>`).join('')}
-                                </ul>
-                            </div>
-                            <div class="print-avoid-break bg-teal-50 border border-teal-200 rounded-lg p-4">
-                                <h4 class="font-semibold text-teal-900 mb-2">Vida Útil - Vida Útil do Produto</h4>
-                                <ul class="text-sm text-teal-800 space-y-1">
-                                    ${recs.VIDA.map(item => `<li>• ${item}</li>`).join('')}
-                                </ul>
-                            </div>
-                            <div class="print-avoid-break bg-slate-50 border border-slate-200 rounded-lg p-4 md:col-span-2">
-                                <h4 class="font-semibold text-slate-900 mb-2">Monitoramento - Extensão e Rastreabilidade do Ciclo de Vida</h4>
-                                <ul class="text-sm text-slate-800 space-y-1">
-                                    ${recs.MONITORAMENTO.map(item => `<li>• ${item}</li>`).join('')}
-                                </ul>
-                            </div>
+                        <div class="space-y-4 mt-3">
+                            ${devolutivas.map((item) => `
+                                <div class="print-avoid-break bg-orange-50 border border-orange-200 rounded-lg p-4">
+                                    <div class="flex justify-between gap-3 items-start">
+                                        <h4 class="font-semibold text-orange-900">${item.titulo}</h4>
+                                        <span class="text-lg font-bold text-orange-700">${item.percentual}%</span>
+                                    </div>
+                                    <p class="text-sm text-orange-950 mt-3"><strong>Análise Estratégica:</strong> ${item.analise}</p>
+                                    <p class="text-sm text-orange-950 mt-2"><strong>Recomendação Técnica:</strong> ${item.tecnica}</p>
+                                    <ul class="text-sm text-orange-800 space-y-1 mt-2">
+                                        ${item.recomendacoes.map(itemRec => `<li>• ${itemRec}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">

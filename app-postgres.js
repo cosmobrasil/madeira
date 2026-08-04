@@ -737,31 +737,31 @@
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900">Recomendações Personalizadas</h3>
                         <div class="mt-3 grid md:grid-cols-2 gap-4">
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="print-avoid-break bg-blue-50 border border-blue-200 rounded-lg p-4">
                                 <h4 class="font-semibold text-blue-900 mb-2">Entradas</h4>
                                 <ul class="text-sm text-blue-800 space-y-1">
                                     ${recs.INPUT.map(item => `<li>• ${item}</li>`).join('')}
                                 </ul>
                             </div>
-                            <div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                            <div class="print-avoid-break bg-orange-50 border border-orange-200 rounded-lg p-4">
                                 <h4 class="font-semibold text-orange-900 mb-2">Resíduos</h4>
                                 <ul class="text-sm text-orange-800 space-y-1">
                                     ${recs.RESIDUOS.map(item => `<li>• ${item}</li>`).join('')}
                                 </ul>
                             </div>
-                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                            <div class="print-avoid-break bg-indigo-50 border border-indigo-200 rounded-lg p-4">
                                 <h4 class="font-semibold text-indigo-900 mb-2">Saídas</h4>
                                 <ul class="text-sm text-indigo-800 space-y-1">
                                     ${recs.OUTPUT.map(item => `<li>• ${item}</li>`).join('')}
                                 </ul>
                             </div>
-                            <div class="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                            <div class="print-avoid-break bg-teal-50 border border-teal-200 rounded-lg p-4">
                                 <h4 class="font-semibold text-teal-900 mb-2">Vida Útil & Pós-venda</h4>
                                 <ul class="text-sm text-teal-800 space-y-1">
                                     ${recs.VIDA.map(item => `<li>• ${item}</li>`).join('')}
                                 </ul>
                             </div>
-                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 md:col-span-2">
+                            <div class="print-avoid-break bg-slate-50 border border-slate-200 rounded-lg p-4 md:col-span-2">
                                 <h4 class="font-semibold text-slate-900 mb-2">Monitoramento</h4>
                                 <ul class="text-sm text-slate-800 space-y-1">
                                     ${recs.MONITORAMENTO.map(item => `<li>• ${item}</li>`).join('')}
@@ -806,11 +806,13 @@
         const html = elementos.relatorioScreen.innerHTML;
         const win = window.open('', '_blank');
         if (!win) return;
-        win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Circularidade</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="style.css"><style>@page{size:A4;margin:20mm;} body{background:#fff;} .no-print{display:none !important;} @media print{button,a{display:none !important;}}</style></head><body class="p-8">${html}</body></html>`);
+        win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Circularidade</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="style.css"><style>@page{size:A4;margin:14mm;} html,body{height:auto !important;overflow:visible !important;} body{background:#fff;padding:0 !important;} .no-print{display:none !important;} .print-avoid-break{break-inside:avoid;page-break-inside:avoid;} @media print{button,a{display:none !important;} .max-w-4xl{max-width:none !important;} .grid{break-inside:auto;} .print-avoid-break{break-inside:avoid;page-break-inside:avoid;}}</style></head><body class="p-8">${html}</body></html>`);
         win.document.close();
         win.onload = () => {
-            win.focus();
-            win.print();
+            win.setTimeout(() => {
+                win.focus();
+                win.print();
+            }, 500);
         };
     }
 

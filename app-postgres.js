@@ -617,15 +617,15 @@
             </div>
             <div class="card">
               <h2>Recomendações</h2>
-              <p><strong>Entradas</strong></p>
+              <p><strong>Entrada - Origem e Tipo de Matéria-Prima</strong></p>
               <ul>${lista(recs.INPUT)}</ul>
-              <p><strong>Resíduos</strong></p>
+              <p><strong>Resíduos - Gestão Interna de Resíduos</strong></p>
               <ul>${lista(recs.RESIDUOS)}</ul>
-              <p><strong>Saídas</strong></p>
+              <p><strong>Saídas - Fim de Vida do Produto</strong></p>
               <ul>${lista(recs.OUTPUT)}</ul>
-              <p><strong>Vida Útil & Pós-venda</strong></p>
+              <p><strong>Vida Útil - Vida Útil do Produto</strong></p>
               <ul>${lista(recs.VIDA)}</ul>
-              <p><strong>Monitoramento</strong></p>
+              <p><strong>Monitoramento - Extensão e Rastreabilidade do Ciclo de Vida</strong></p>
               <ul>${lista(recs.MONITORAMENTO)}</ul>
             </div>
             <p class="footer">Este relatório foi gerado automaticamente pelo CosmoBrasil 2.1 - Pré-Diagnóstico de Circularidade 2026 - Madeira - Moda - Náutica.</p>
@@ -738,31 +738,31 @@
                         <h3 class="text-lg font-semibold text-gray-900">Recomendações Personalizadas</h3>
                         <div class="mt-3 grid md:grid-cols-2 gap-4">
                             <div class="print-avoid-break bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <h4 class="font-semibold text-blue-900 mb-2">Entradas</h4>
+                                <h4 class="font-semibold text-blue-900 mb-2">Entrada - Origem e Tipo de Matéria-Prima</h4>
                                 <ul class="text-sm text-blue-800 space-y-1">
                                     ${recs.INPUT.map(item => `<li>• ${item}</li>`).join('')}
                                 </ul>
                             </div>
                             <div class="print-avoid-break bg-orange-50 border border-orange-200 rounded-lg p-4">
-                                <h4 class="font-semibold text-orange-900 mb-2">Resíduos</h4>
+                                <h4 class="font-semibold text-orange-900 mb-2">Resíduos - Gestão Interna de Resíduos</h4>
                                 <ul class="text-sm text-orange-800 space-y-1">
                                     ${recs.RESIDUOS.map(item => `<li>• ${item}</li>`).join('')}
                                 </ul>
                             </div>
                             <div class="print-avoid-break bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                                <h4 class="font-semibold text-indigo-900 mb-2">Saídas</h4>
+                                <h4 class="font-semibold text-indigo-900 mb-2">Saídas - Fim de Vida do Produto</h4>
                                 <ul class="text-sm text-indigo-800 space-y-1">
                                     ${recs.OUTPUT.map(item => `<li>• ${item}</li>`).join('')}
                                 </ul>
                             </div>
                             <div class="print-avoid-break bg-teal-50 border border-teal-200 rounded-lg p-4">
-                                <h4 class="font-semibold text-teal-900 mb-2">Vida Útil & Pós-venda</h4>
+                                <h4 class="font-semibold text-teal-900 mb-2">Vida Útil - Vida Útil do Produto</h4>
                                 <ul class="text-sm text-teal-800 space-y-1">
                                     ${recs.VIDA.map(item => `<li>• ${item}</li>`).join('')}
                                 </ul>
                             </div>
                             <div class="print-avoid-break bg-slate-50 border border-slate-200 rounded-lg p-4 md:col-span-2">
-                                <h4 class="font-semibold text-slate-900 mb-2">Monitoramento</h4>
+                                <h4 class="font-semibold text-slate-900 mb-2">Monitoramento - Extensão e Rastreabilidade do Ciclo de Vida</h4>
                                 <ul class="text-sm text-slate-800 space-y-1">
                                     ${recs.MONITORAMENTO.map(item => `<li>• ${item}</li>`).join('')}
                                 </ul>

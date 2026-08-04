@@ -149,7 +149,7 @@
             uf: dados.empresaUf || '',
             celular: document.getElementById('celular').value || '',
             email: document.getElementById('email').value || 'sem-email@cosmobrasil.app',
-            setorEconomico: document.getElementById('setorEconomico').value || 'Outro',
+            setorEconomico: document.getElementById('setorEconomico').value || '',
             produtoAvaliado: document.getElementById('produtoAvaliado').value || 'Não Informado'
         };
 

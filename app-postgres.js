@@ -628,6 +628,11 @@
               <p><strong>Monitoramento - Extensão e Rastreabilidade do Ciclo de Vida</strong></p>
               <ul>${lista(recs.MONITORAMENTO)}</ul>
             </div>
+            <div class="card" style="border-color:#fbbf24;background:#fffbeb;">
+              <h2 style="color:#92400e;">⚠️ Importante: Análise Qualitativa</h2>
+              <p>O percentual obtido não reflete uma classificação de “melhor” ou “pior”, mas funciona como estímulo para melhorias contínuas nos processos produtivos, visando preparar a empresa para novos nichos de mercado internacionais.</p>
+              <p>Este resultado está alinhado ao contexto da economia circular com parâmetros internacionais, visando preparar empresas e instituições na organização e abertura de novos nichos de mercado.</p>
+            </div>
             <p class="footer">Este relatório foi gerado automaticamente pelo CosmoBrasil 2.1 - Pré-Diagnóstico de Circularidade 2026 - Madeira - Moda - Náutica.</p>
           </div>
         </body>
@@ -772,6 +777,11 @@
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                         <h3 class="text-lg font-semibold text-gray-900">Observações Técnicas</h3>
                         <p class="text-sm text-gray-700">Este relatório é gerado automaticamente com base nas respostas fornecidas no pré-diagnóstico. Recomenda-se validação técnica para decisões estratégicas.</p>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-4 print-avoid-break">
+                        <h3 class="text-lg font-semibold text-yellow-800">⚠️ Importante: Análise Qualitativa</h3>
+                        <p class="text-sm text-yellow-900">O percentual obtido não reflete uma classificação de “melhor” ou “pior”, mas funciona como estímulo para melhorias contínuas nos processos produtivos, visando preparar a empresa para novos nichos de mercado internacionais.</p>
+                        <p class="text-sm text-yellow-900">Este resultado está alinhado ao contexto da economia circular com parâmetros internacionais, visando preparar empresas e instituições na organização e abertura de novos nichos de mercado.</p>
                     </div>
                 </div>
                 <div class="mt-8 flex justify-between">

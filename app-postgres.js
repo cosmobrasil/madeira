@@ -113,7 +113,9 @@
     const dados = {
         empresa: {},
         respostas: {},
-        questaoAtual: 0
+        questaoAtual: 0,
+        questionarioId: null,
+        relatorioHtml: null
     };
 
     // Event Listeners
@@ -270,6 +272,7 @@
             // Gerar relatório HTML para envio
             const estagio = classificarEstagio(percentual);
             const recs = gerarRecomendacoes(dados.respostas);
+            const temasRelatorio = calcularTemasRelatorio(dados.respostas);
             const potencial = 100 - percentual;
             const dataStr = new Date().toLocaleString('pt-BR');
             const idRelatorio = Math.floor(Math.random() * 1000) + 1;
@@ -280,6 +283,7 @@
                 perfilCircularidadeMateriais,
                 estagio,
                 grupos,
+                temasRelatorio,
                 recs,
                 dataStr,
                 idRelatorio,
@@ -287,6 +291,8 @@
                 totalPossivel,
                 potencial
             });
+            // Esta é a versão definitiva: será exibida ao usuário e arquivada no painel.
+            dados.relatorioHtml = htmlEmail;
 
             // Dados completos para o backend
             const payload = {
@@ -333,7 +339,9 @@
                 success: true,
                 driveSaved: result.driveSaved,
                 driveUrl: result.driveUrl,
-                empresaId: result.empresaId
+                empresaId: result.empresaId,
+                questionarioId: result.questionarioId,
+                relatorioHtml: htmlEmail
             };
 
         } catch (error) {
@@ -361,7 +369,8 @@
                 console.warn('⚠️ Relatório foi salvo no banco, mas não no Drive (verifique o backend).');
             }
 
-            mostrarConfirmacao(result);
+            // Exibe imediatamente a mesma versão que foi persistida no banco.
+            mostrarRelatorio(result);
 
         } catch (error) {
             console.error('Erro ao salvar dados:', error);
@@ -483,11 +492,12 @@
 
     function gerarRecomendacoes(r) {
         const rec = {
-            INPUT: [], RESIDUOS: [], OUTPUT: [], VIDA: [], MONITORAMENTO: []
+            ORIGEM: [], RESIDUOS: [], FIM_VIDA: [], DURABILIDADE: [], REPARO: [],
+            REAPROVEITAMENTO: [], POS_VENDA: [], RASTREABILIDADE: [], DOCUMENTACAO: []
         };
         const gruposPorQuestao = {
-            1: 'INPUT', 2: 'RESIDUOS', 3: 'OUTPUT', 4: 'OUTPUT', 5: 'OUTPUT', 6: 'OUTPUT',
-            7: 'VIDA', 8: 'VIDA', 9: 'VIDA', 10: 'MONITORAMENTO', 11: 'MONITORAMENTO', 12: 'MONITORAMENTO'
+            1: 'ORIGEM', 2: 'RESIDUOS', 3: 'FIM_VIDA', 4: 'FIM_VIDA', 5: 'FIM_VIDA', 6: 'FIM_VIDA',
+            7: 'DURABILIDADE', 8: 'REPARO', 9: 'REAPROVEITAMENTO', 10: 'POS_VENDA', 11: 'RASTREABILIDADE', 12: 'DOCUMENTACAO'
         };
         const regras = CONFIG.RECOMENDACOES || {};
 
@@ -495,47 +505,166 @@
             const regra = regras[qid] && regras[qid][r[qid]];
             if (!regra) return;
             const grupo = gruposPorQuestao[qid];
-            rec[grupo].push(`[${regra.prioridade}] ${regra.texto}`);
+            rec[grupo].push({
+                texto: regra.texto,
+                prioridade: regra.prioridade,
+                exibirPrazo: !regra.texto.trim().startsWith('Parabéns')
+            });
+        });
+
+        // Algumas questões do mesmo tema compartilham a mesma orientação.
+        // Exiba-a uma única vez no relatório para evitar repetição ao usuário.
+        Object.keys(rec).forEach((grupo) => {
+            rec[grupo] = rec[grupo].filter((item, index, itens) =>
+                itens.findIndex((outro) =>
+                    outro.texto === item.texto && outro.prioridade === item.prioridade
+                ) === index
+            );
         });
 
         return rec;
     }
 
-    const DEVOLUTIVA_MODELO = {
-        INPUT: {
-            titulo: 'Entrada (Input) - Matéria-Prima e Competitividade',
-            analise: 'A diversificação de fontes de matéria-prima representa um diferencial competitivo crucial no mercado global. Empresas que integram materiais reciclados e resíduos de outros processos demonstram maior resiliência às flutuações de preços e à disponibilidade de recursos virgens.',
-            tecnica: 'Desenvolver parcerias estratégicas com empresas complementares para criar um ecossistema de economia circular, no qual os resíduos de uma empresa se tornam insumos para outra. Investir em tecnologias de purificação e processamento de materiais reciclados pode reduzir custos operacionais e criar vantagem competitiva sustentável.'
+    function formatarPrazoSugerido(prioridade) {
+        return `<span style="display:block;margin-top:4px;font-size:0.75rem;font-weight:600;color:#9a3412;">Prazo sugerido: ${prioridade}</span>`;
+    }
+
+    function formatarRecomendacaoParaRelatorio(item) {
+        const recomendacao = typeof item === 'string'
+            ? { texto: item, prioridade: null, exibirPrazo: false }
+            : item;
+        const prazo = recomendacao.exibirPrazo && recomendacao.prioridade
+            ? formatarPrazoSugerido(recomendacao.prioridade)
+            : '';
+
+        return `${recomendacao.texto}${prazo}`;
+    }
+
+    function normalizarTextoParaComparacao(texto) {
+        return String(texto || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+    }
+
+    function textosSaoEquivalentes(textoA, textoB) {
+        const normalizadoA = normalizarTextoParaComparacao(textoA);
+        const normalizadoB = normalizarTextoParaComparacao(textoB);
+        if (normalizadoA === normalizadoB) return true;
+
+        const palavrasIgnoradas = new Set(['a', 'as', 'ao', 'aos', 'da', 'das', 'de', 'do', 'dos', 'e', 'em', 'o', 'os', 'para', 'por']);
+        const palavrasA = new Set(normalizadoA.split(' ').filter((palavra) => palavra && !palavrasIgnoradas.has(palavra)));
+        const palavrasB = new Set(normalizadoB.split(' ').filter((palavra) => palavra && !palavrasIgnoradas.has(palavra)));
+        const intersecao = [...palavrasA].filter((palavra) => palavrasB.has(palavra)).length;
+        const uniao = new Set([...palavrasA, ...palavrasB]).size;
+
+        return intersecao >= 4 && (intersecao / uniao) >= 0.8;
+    }
+
+    function organizarRecomendacoesDoTema(item) {
+        const recomendacoes = Array.isArray(item.recomendacoes) ? item.recomendacoes : [];
+        const repetidas = recomendacoes.filter((recomendacao) =>
+            textosSaoEquivalentes(recomendacao.texto, item.tecnica)
+        );
+        const complementar = recomendacoes.filter((recomendacao) =>
+            !textosSaoEquivalentes(recomendacao.texto, item.tecnica)
+        );
+        const prazoDaTecnica = repetidas.find((recomendacao) =>
+            recomendacao.exibirPrazo && recomendacao.prioridade
+        )?.prioridade || null;
+
+        return { complementar, prazoDaTecnica };
+    }
+
+    const TEMAS_RELATORIO = {
+        ORIGEM: {
+            perguntas: [1],
+            titulo: 'Origem e tipo de matéria-prima',
+            analise: 'A escolha da matéria-prima influencia custos, disponibilidade de fornecedores e o impacto ambiental do produto.',
+            tecnica: 'Mapeie alternativas de menor impacto e avance gradualmente com fornecedores que ofereçam materiais reciclados, renováveis ou reaproveitados.'
         },
         RESIDUOS: {
-            titulo: 'Gestão de Resíduos - Transformação em Valor Agregado',
-            analise: 'A gestão eficiente de resíduos transcende a simples conformidade ambiental, representando uma oportunidade significativa de geração de receita adicional e redução de custos. Empresas líderes no mercado global transformam seus resíduos em linhas de negócios independentes.',
-            tecnica: 'Implementar sistemas de classificação automatizada utilizando tecnologias de IoT e inteligência artificial para maximizar o valor de recuperação. Desenvolver parcerias com empresas de recuperação energética e reciclagem avançada pode gerar receitas complementares e reduzir o custo de tratamento.'
+            perguntas: [2],
+            titulo: 'Gestão interna de resíduos',
+            analise: 'Separar e destinar corretamente os resíduos reduz perdas, facilita o controle do processo e pode gerar novas parcerias.',
+            tecnica: 'Registre os tipos e volumes de resíduos e mantenha evidências da destinação adotada.'
         },
-        OUTPUT: {
-            titulo: 'Saída (Output) - Design Circular e Diferenciação de Mercado',
-            analise: 'O design para circularidade dos produtos finais representa um dos principais diferenciais competitivos no mercado B2B e B2C contemporâneo. Consumidores e empresas compradoras valorizam produtos que demonstram responsabilidade ambiental integral desde a concepção.',
-            tecnica: 'Incorporar princípios de design circular, como desmontagem facilitada, modularidade e escolha de materiais recicláveis. Desenvolver sistemas de logística reversa e comunicação transparente sobre o destino dos materiais pode fortalecer a marca e abrir novos mercados.'
+        FIM_VIDA: {
+            perguntas: [3, 4, 5, 6],
+            titulo: 'Fim de vida do produto',
+            analise: 'O produto gera mais valor quando seus materiais podem ser separados e encaminhados a rotas adequadas após o uso.',
+            tecnica: 'Avalie a desmontagem, a reciclabilidade e a destinação dos materiais desde a concepção do produto.'
         },
-        VIDA: {
-            titulo: 'Vida Útil - Durabilidade, Reparabilidade e Reaproveitamento',
-            analise: 'A extensão da vida útil do produto reduz impactos ambientais, protege margens e fortalece o relacionamento com o cliente. Produtos duráveis, reparáveis e reaproveitáveis criam oportunidades de serviços, fidelização e novos modelos de negócio.',
-            tecnica: 'Aprimorar testes de durabilidade, projetar componentes reparáveis e disponibilizar peças, orientações e suporte técnico. Avaliar soluções modulares e formas de reaproveitamento após o uso pode ampliar o valor do produto ao longo de todo o seu ciclo de vida.'
+        DURABILIDADE: {
+            perguntas: [7],
+            titulo: 'Vida útil do produto: Durabilidade',
+            analise: 'Produtos duráveis reduzem substituições prematuras e ajudam a fortalecer a confiança do cliente.',
+            tecnica: 'Defina testes, critérios de qualidade e orientações de uso que ajudem a comprovar a durabilidade do produto.'
         },
-        MONITORAMENTO: {
-            titulo: 'Monitoramento - Extensão e Rastreabilidade do Ciclo de Vida',
-            analise: 'O monitoramento do ciclo de vida aproxima a empresa do cliente, amplia a transparência e permite transformar dados de uso em melhorias contínuas. Serviços pós-venda e rastreabilidade também criam novas oportunidades de relacionamento e receita.',
-            tecnica: 'Implementar serviços de manutenção e orientação de uso, além de soluções de rastreabilidade como QR Code, passaporte digital ou registros equivalentes. Tornar as informações do produto acessíveis e fáceis de entender fortalece a confiança e a diferenciação no mercado.'
+        REPARO: {
+            perguntas: [8],
+            titulo: 'Vida útil do produto: Reparo ou conserto',
+            analise: 'A possibilidade de reparo prolonga o uso do produto e pode criar novas formas de relacionamento com o cliente.',
+            tecnica: 'Facilite o acesso a peças, orientações e suporte para reparos ou consertos.'
+        },
+        REAPROVEITAMENTO: {
+            perguntas: [9],
+            titulo: 'Vida útil do produto: Reaproveitamento',
+            analise: 'O reaproveitamento mantém materiais em uso por mais tempo e reduz o descarte de itens ainda úteis.',
+            tecnica: 'Identifique oportunidades de reuso, recuperação ou transformação do produto após o uso.'
+        },
+        POS_VENDA: {
+            perguntas: [10],
+            titulo: 'Monitoramento e extensão do ciclo de vida do produto: serviços pós-venda',
+            analise: 'O acompanhamento após a venda ajuda o cliente a usar melhor o produto e amplia sua vida útil.',
+            tecnica: 'Ofereça orientações de uso, manutenção ou outros serviços simples de pós-venda.'
+        },
+        RASTREABILIDADE: {
+            perguntas: [11],
+            titulo: 'Monitoramento e extensão do ciclo de vida do produto: rastreabilidade pós-venda',
+            analise: 'A rastreabilidade torna mais fácil acompanhar o produto e comunicar informações relevantes ao cliente.',
+            tecnica: 'Adote registros simples, QR Code ou solução equivalente para organizar informações do produto.'
+        },
+        DOCUMENTACAO: {
+            perguntas: [12],
+            titulo: 'Monitoramento e extensão do ciclo de vida do produto',
+            analise: 'Informações claras ajudam o consumidor a utilizar, conservar e destinar melhor o produto.',
+            tecnica: 'Disponibilize informações de fácil compreensão sobre materiais, cuidados e destinação.'
         }
     };
 
-    function construirDevolutivas(recs, grupos) {
-        return ['INPUT', 'RESIDUOS', 'OUTPUT', 'VIDA', 'MONITORAMENTO'].map((chave) => ({
-            chave,
-            ...DEVOLUTIVA_MODELO[chave],
-            percentual: Number(grupos && grupos[chave] || 0),
-            recomendacoes: Array.isArray(recs && recs[chave]) ? recs[chave] : []
+    function calcularTemasRelatorio(respostas) {
+        const MET = CONFIG.METODOLOGIA || MET_DEFAULT;
+        return Object.fromEntries(Object.entries(TEMAS_RELATORIO).map(([chave, tema]) => {
+            let pontos = 0;
+            let maximo = 0;
+            tema.perguntas.forEach((qid) => {
+                const mapa = MET.PONTOS[qid] || {};
+                maximo += Math.max(...Object.values(mapa));
+                pontos += Number(mapa[respostas[qid]] || 0);
+            });
+            return [chave, maximo > 0 ? Math.round((pontos / maximo) * 100) : 0];
         }));
+    }
+
+    function construirDevolutivas(recs, temas) {
+        return Object.entries(TEMAS_RELATORIO).map(([chave, tema]) => {
+            const percentual = Number(temas && temas[chave] || 0);
+            const pontuacaoMaxima = percentual === 100;
+            return {
+                chave,
+                ...tema,
+                percentual,
+                tecnica: pontuacaoMaxima
+                    ? 'Mantenha as práticas adotadas e registre os resultados para acompanhar sua continuidade.'
+                    : tema.tecnica,
+                recomendacoes: pontuacaoMaxima
+                    ? [{ texto: 'Parabéns! Este tema atingiu a pontuação máxima. Mantenha as práticas que já funcionam bem.', prioridade: null, exibirPrazo: false }]
+                    : (Array.isArray(recs && recs[chave]) ? recs[chave] : [])
+            };
+        });
     }
 
     function formatarNomeGrupo(chave) {
@@ -587,12 +716,14 @@
         `;
     }
 
-    function construirHtmlEmailRelatorio({ empresa, percentual, perfilCircularidadeMateriais, estagio, grupos, recs, dataStr, idRelatorio, pontos, totalPossivel, potencial }) {
+    function construirHtmlEmailRelatorio({ empresa, percentual, perfilCircularidadeMateriais, estagio, grupos, temasRelatorio, recs, dataStr, idRelatorio, pontos, totalPossivel, potencial }) {
         const gruposOrdenados = obterGruposOrdenados(grupos);
-        const devolutivas = construirDevolutivas(recs, grupos);
+        const devolutivas = construirDevolutivas(recs, temasRelatorio);
         const graficoSvg = gerarSvgIndiceCircularidade(percentual, 320);
         const pcm = perfilCircularidadeMateriais || { indice: 0, componentes: {} };
-        const lista = (arr) => Array.isArray(arr) ? arr.map(i => `<li>${i}</li>`).join('') : '';
+        const lista = (arr) => Array.isArray(arr)
+            ? arr.map(item => `<li>${formatarRecomendacaoParaRelatorio(item)}</li>`).join('')
+            : '';
         return `<!DOCTYPE html>
         <html lang="pt-BR">
         <head>
@@ -655,18 +786,22 @@
             </div>
             <div class="card">
               <h2>Recomendações Personalizadas</h2>
-              ${devolutivas.map((item) => `
+              ${devolutivas.map((item) => {
+                const { complementar, prazoDaTecnica } = organizarRecomendacoesDoTema(item);
+                return `
                 <div class="devolutiva" style="break-inside:avoid;page-break-inside:avoid;margin-top:16px;padding-top:12px;border-top:1px solid #fed7aa;">
                   <h3 style="font-size:16px;color:#c85a16;margin:0 0 8px;">${item.titulo} - ${item.percentual}%</h3>
                   <p><strong>Análise Estratégica:</strong> ${item.analise}</p>
                   <p><strong>Recomendação Técnica:</strong> ${item.tecnica}</p>
-                  <ul>${lista(item.recomendacoes)}</ul>
+                  ${prazoDaTecnica ? `<p>${formatarPrazoSugerido(prazoDaTecnica)}</p>` : ''}
+                  ${complementar.length ? `<ul>${lista(complementar)}</ul>` : ''}
                 </div>
-              `).join('')}
+              `;
+              }).join('')}
             </div>
             <div class="card" style="border-color:#fbbf24;background:#fffbeb;">
-              <h2 style="color:#92400e;">⚠️ Importante: Análise Qualitativa</h2>
-              <p>O percentual obtido não reflete uma classificação de “melhor” ou “pior”, mas funciona como estímulo para melhorias contínuas nos processos produtivos, visando preparar a empresa para novos nichos de mercado internacionais.</p>
+              <h2 style="color:#92400e;">Importante: interpretação dos resultados</h2>
+              <p>Os percentuais obtidos nesse relatório não refletem uma classificação de “melhor” ou “pior”, mas funcionam como estímulo para melhorias contínuas nos processos produtivos, visando preparar a empresa para novos nichos de mercado internacionais.</p>
               <p>Este resultado está alinhado ao contexto da economia circular com parâmetros internacionais, visando preparar empresas e instituições na organização e abertura de novos nichos de mercado.</p>
             </div>
             <p class="footer">Este relatório foi gerado automaticamente pelo CosmoBrasil 2.1 - Pré-Diagnóstico de Circularidade 2026 - Madeira - Moda - Náutica.</p>
@@ -711,7 +846,63 @@
         }
     }
 
-    async function mostrarRelatorio() {
+    function mostrarRelatorio(resultado = {}) {
+        const htmlRelatorio = resultado.relatorioHtml || dados.relatorioHtml;
+        if (!htmlRelatorio) {
+            mostrarRelatorioLegado();
+            return;
+        }
+
+        dados.questionarioId = resultado.questionarioId || dados.questionarioId;
+        elementos.questionarioScreen.classList.add('hidden');
+        elementos.confirmacaoScreen.classList.add('hidden');
+        elementos.relatorioScreen.classList.remove('hidden');
+        elementos.relatorioScreen.innerHTML = `
+            <div class="bg-white rounded-xl shadow-2xl p-4 md:p-8 max-w-5xl mx-auto">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5 no-print">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Seu relatório de circularidade</h2>
+                        <p class="text-sm text-gray-600">Este é o mesmo relatório arquivado no Dashboard Gerencial.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="btnImprimirRelatorioSalvo" class="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700">Salvar em PDF</button>
+                        <button id="btnBaixarRelatorioSalvo" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700">Baixar HTML</button>
+                    </div>
+                </div>
+                <iframe id="relatorioGeradoFrame" title="Relatório de Circularidade" class="w-full border border-gray-200 rounded-lg bg-white" style="min-height: 1200px"></iframe>
+            </div>
+        `;
+
+        const frame = document.getElementById('relatorioGeradoFrame');
+        frame.addEventListener('load', () => {
+            const altura = frame.contentDocument?.documentElement?.scrollHeight;
+            if (altura) frame.style.height = `${altura + 24}px`;
+        }, { once: true });
+        frame.srcdoc = htmlRelatorio;
+
+        document.getElementById('btnImprimirRelatorioSalvo')?.addEventListener('click', () => {
+            const janela = window.open('', '_blank');
+            if (!janela) return;
+            janela.document.write(htmlRelatorio);
+            janela.document.close();
+            janela.onload = () => janela.print();
+        });
+
+        document.getElementById('btnBaixarRelatorioSalvo')?.addEventListener('click', () => {
+            const blob = new Blob([htmlRelatorio], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const nomeEmpresa = (dados.empresa.nomeEmpresa || 'empresa').replace(/[^a-z0-9]+/gi, '_');
+            link.href = url;
+            link.download = `Relatorio_Circularidade_${nomeEmpresa}_${dados.questionarioId || 'novo'}.html`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    async function mostrarRelatorioLegado() {
         elementos.confirmacaoScreen.classList.add('hidden');
         elementos.relatorioScreen.classList.remove('hidden');
         const { pontos, totalPossivel, percentual, grupos } = calcularPontuacao();
@@ -723,7 +914,8 @@
         const idRelatorio = Math.floor(Math.random() * 1000) + 1;
         const estagio = classificarEstagio(percentual);
         const recs = gerarRecomendacoes(dados.respostas);
-        const devolutivas = construirDevolutivas(recs, grupos);
+        const temasRelatorio = calcularTemasRelatorio(dados.respostas);
+        const devolutivas = construirDevolutivas(recs, temasRelatorio);
         const gruposOrdenados = obterGruposOrdenados(grupos);
         const graficoIndiceSvg = gerarSvgIndiceCircularidade(percentual, 360);
 
@@ -779,7 +971,9 @@
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900">Recomendações Personalizadas</h3>
                         <div class="space-y-4 mt-3">
-                            ${devolutivas.map((item) => `
+                            ${devolutivas.map((item) => {
+                                const { complementar, prazoDaTecnica } = organizarRecomendacoesDoTema(item);
+                                return `
                                 <div class="print-avoid-break bg-orange-50 border border-orange-200 rounded-lg p-4">
                                     <div class="flex justify-between gap-3 items-start">
                                         <h4 class="font-semibold text-orange-900">${item.titulo}</h4>
@@ -787,21 +981,19 @@
                                     </div>
                                     <p class="text-sm text-orange-950 mt-3"><strong>Análise Estratégica:</strong> ${item.analise}</p>
                                     <p class="text-sm text-orange-950 mt-2"><strong>Recomendação Técnica:</strong> ${item.tecnica}</p>
-                                    <ul class="text-sm text-orange-800 space-y-1 mt-2">
-                                        ${item.recomendacoes.map(itemRec => `<li>• ${itemRec}</li>`).join('')}
-                                    </ul>
+                                    ${prazoDaTecnica ? `<p class="text-sm text-orange-800 mt-2">${formatarPrazoSugerido(prazoDaTecnica)}</p>` : ''}
+                                    ${complementar.length ? `<ul class="text-sm text-orange-800 space-y-1 mt-2">
+                                        ${complementar.map(itemRec => `<li>• ${formatarRecomendacaoParaRelatorio(itemRec)}</li>`).join('')}
+                                    </ul>` : ''}
                                 </div>
-                            `).join('')}
+                            `;
+                            }).join('')}
                         </div>
                     </div>
-                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <h3 class="text-lg font-semibold text-gray-900">Observações Técnicas</h3>
-                        <p class="text-sm text-gray-700">Este relatório é gerado automaticamente com base nas respostas fornecidas no pré-diagnóstico. Recomenda-se validação técnica para decisões estratégicas.</p>
-                    </div>
                     <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-4 print-avoid-break">
-                        <h3 class="text-lg font-semibold text-yellow-800">⚠️ Importante: Análise Qualitativa</h3>
-                        <p class="text-sm text-yellow-900">O percentual obtido não reflete uma classificação de “melhor” ou “pior”, mas funciona como estímulo para melhorias contínuas nos processos produtivos, visando preparar a empresa para novos nichos de mercado internacionais.</p>
-                        <p class="text-sm text-yellow-900">Este resultado está alinhado ao contexto da economia circular com parâmetros internacionais, visando preparar empresas e instituições na organização e abertura de novos nichos de mercado.</p>
+                        <h3 class="text-lg font-semibold text-yellow-800">Importante: interpretação dos resultados</h3>
+                        <p class="text-sm text-yellow-900 mt-2">Os percentuais obtidos nesse relatório não refletem uma classificação de “melhor” ou “pior”, mas funcionam como estímulo para melhorias contínuas nos processos produtivos, visando preparar a empresa para novos nichos de mercado internacionais.</p>
+                        <p class="text-sm text-yellow-900 mt-2">Este resultado está alinhado ao contexto da economia circular com parâmetros internacionais, visando preparar empresas e instituições na organização e abertura de novos nichos de mercado.</p>
                     </div>
                 </div>
                 <div class="mt-8 flex justify-between">

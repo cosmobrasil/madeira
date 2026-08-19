@@ -669,11 +669,11 @@
 
     function formatarNomeGrupo(chave) {
         const nomes = {
-            INPUT: 'INPUT',
-            RESIDUOS: 'RESÍDUOS',
-            OUTPUT: 'OUTPUT',
-            VIDA: 'VIDA',
-            MONITORAMENTO: 'MONITORAMENTO'
+            INPUT: 'Origem e tipo de matéria-prima',
+            RESIDUOS: 'Gestão interna de resíduos',
+            OUTPUT: 'Fim de vida do produto',
+            VIDA: 'Vida útil do produto',
+            MONITORAMENTO: 'Monitoramento e extensão do ciclo de vida do produto'
         };
         return nomes[chave] || chave;
     }
@@ -742,7 +742,7 @@
             .radar{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:8px}
             .cats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
             .cat{background:#ffffff;border:1px solid #fed7aa;border-radius:8px;padding:8px}
-            .cat .name{font-size:11px;color:#9a3412;font-weight:600}
+            .cat .name{font-size:11px;line-height:1.3;color:#9a3412;font-weight:600}
             .cat .val{font-size:18px;color:#9a3412;font-weight:700}
             .badge{display:inline-block;padding:4px 8px;border-radius:6px;background:#fff7ed;color:#9a3412;font-weight:600;font-size:12px}
             .small{font-size:12px;color:#6b7280}
